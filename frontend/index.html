@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="RAG-Based Text-to-SQL Query Generator — Convert natural language questions to SQL queries using Gemini AI and the Northwind database." />
+  <title>RAG Text-to-SQL | Query Generator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <div class="app-container">
+
+    <!-- ================================================
+         HEADER
+    ================================================ -->
+    <header class="app-header">
+      <div class="header-badge">
+        <span class="dot"></span>
+        RAG-Powered · Gemini AI · NorthWind DB
+      </div>
+      <h1>Text-to-SQL Query Generator</h1>
+      <p>
+        Ask a question in plain English — our AI reads the database schema,
+        generates the SQL, and runs it for you instantly.
+      </p>
+
+      <!-- Pipeline flow diagram -->
+      <div class="flow-diagram" aria-label="Query pipeline">
+        <div class="flow-step">
+          <span class="step-icon">💬</span> Natural Language
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">
+          <span class="step-icon">📄</span> RAG Schema
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">
+          <span class="step-icon">🤖</span> Gemini LLM
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">
+          <span class="step-icon">🗄️</span> SQLite DB
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">
+          <span class="step-icon">📊</span> Results
+        </div>
+      </div>
+    </header>
+
+    <!-- ================================================
+         QUERY INPUT CARD
+    ================================================ -->
+    <section class="query-card" aria-label="Query input">
+      <div class="card-label">
+        <span class="label-icon">✍️</span>
+        Ask a question about the Northwind database
+      </div>
+
+      <div class="input-wrapper">
+        <textarea id="query-input" placeholder="e.g. List the top 5 products by unit price..." rows="3"
+          aria-label="Natural language query" spellcheck="true"></textarea>
+
+        <button id="submit-btn" class="btn-submit" aria-label="Generate SQL and run query">
+          <span id="btn-spinner" class="spinner" aria-hidden="true"></span>
+          <span id="btn-icon" class="btn-icon">⚡</span>
+          <span id="btn-text">Run Query</span>
+        </button>
+      </div>
+
+      <!-- Example chips -->
+      <div class="examples-section">
+        <p class="examples-label">Try an example:</p>
+        <div class="examples-chips" role="list">
+          <button class="chip" role="listitem" data-query="List all products.">All products</button>
+
+          <button class="chip" role="listitem" data-query="Show the top 5 most expensive products.">Top 5
+            products</button>
+
+          <button class="chip" role="listitem" data-query="How many customers are from each country?">Customers by
+            country</button>
+
+          <button class="chip" role="listitem" data-query="Which employee has handled the most orders?">Top
+            employee</button>
+
+          <button class="chip" role="listitem" data-query="Show all products with their category names.">Products &
+            categories</button>
+
+          <button class="chip" role="listitem" data-query="What is the total revenue from each country?">Revenue by
+            country</button>
+
+          <button class="chip" role="listitem" data-query="List all categories and how many products each has.">Categories +
+            product count</button>
+
+          <button class="chip" role="listitem" data-query="Find all products supplied by 'Exotic Liquids'.">Exotic Liquids
+            products</button>
+        </div>
+      </div>
+
+      <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.75rem;">
+        💡 Tip: Press <kbd
+          style="background:var(--bg-input);border:1px solid var(--border);border-radius:4px;padding:0.1rem 0.4rem;font-family:monospace;">Ctrl
+          + Enter</kbd> to run
+      </p>
+    </section>
+
+    <!-- ================================================
+         STATUS BAR (loading / error)
+    ================================================ -->
+    <div id="status-bar" role="status" aria-live="polite">
+      <span id="status-msg"></span>
+    </div>
+
+    <!-- ================================================
+         RESULTS SECTION
+    ================================================ -->
+    <section id="results-section" style="display:none;" class="results-section" aria-label="Query results">
+
+      <!-- Generated SQL Block -->
+      <div class="result-block">
+        <div class="block-header">
+          <div class="block-title">
+            <span class="title-icon">🔵</span>
+            Generated SQL Query
+          </div>
+          <button id="copy-sql-btn" class="copy-btn" aria-label="Copy SQL to clipboard">
+            📋 Copy SQL
+          </button>
+        </div>
+        <div id="sql-output" aria-label="Generated SQL query"></div>
+      </div>
+
+      <!-- Query Results Table Block -->
+      <div class="result-block">
+        <div class="block-header">
+          <div class="block-title">
+            <span class="title-icon">📊</span>
+            Query Results
+          </div>
+          <div class="results-meta">
+            <span id="row-count-badge" class="row-count-badge">0 rows</span>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table id="results-table" aria-label="Query results table"></table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================================================
+         CHART.JS VISUALIZATION BLOCK
+    ================================================ -->
+    <div id="chart-block" class="result-block" style="display:none; margin-top: 1.25rem;">
+      <div class="block-header">
+        <div class="block-title">
+          <span class="title-icon">📈</span>
+          Data Visualization
+        </div>
+      </div>
+      <div class="chart-wrapper" style="padding: 1.5rem; max-height: 400px; position: relative; width: 100%;">
+        <canvas id="results-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- ================================================
+         FOOTER
+    ================================================ -->
+    <footer class="app-footer">
+      RAG Text-to-SQL &nbsp;·&nbsp;
+      Powered by <a href="https://ai.google.dev/" target="_blank" rel="noopener">Gemini AI</a> &nbsp;·&nbsp;
+      <a href="https://github.com/jpwhite3/northwind-SQLite3" target="_blank" rel="noopener">Northwind DB</a>
+    </footer>
+
+  </div>
+
+  <!-- JavaScript -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+
+</body>
+
+</html>

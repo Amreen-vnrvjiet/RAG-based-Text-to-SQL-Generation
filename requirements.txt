@@ -1,0 +1,11 @@
+
+flask
+flask-cors
+openai
+google-generativeai
+sentence-transformers
+faiss-cpu
+python-dotenv
+langchain
+scikit-learn
+nltk
