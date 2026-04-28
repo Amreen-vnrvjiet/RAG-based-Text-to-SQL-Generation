@@ -2,7 +2,7 @@
 flask
 flask-cors
 openai
-google-generativeai
+google-genai
 sentence-transformers
 faiss-cpu
 python-dotenv

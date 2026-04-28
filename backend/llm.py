@@ -1,32 +1,32 @@
 """
 llm.py - LLM (Large Language Model) Integration Module
 
-Uses Google Gemini API to convert a natural language query
-into a valid SQL query based on the provided database schema.
+Uses Google Gemini API (new google-genai SDK) to convert a natural
+language query into a valid SQL query based on the provided schema.
 """
 
 import re
-import google.generativeai as genai
+from google import genai
 
 # -------------------------------------------------------
-# CONFIGURATION — Replace with your actual Gemini API key
+# CONFIGURATION — Your Gemini API key
 # -------------------------------------------------------
-GEMINI_API_KEY = "AIzaSyCDpwqbJEHgTKnvbPczEy1aGJCpF1Thy-0"
+GEMINI_API_KEY = "AIzaSyCsEc9Ad8dMmCSVN129UfE9GNT6ysk1A90"
 
-# Gemini model to use (gemini-1.5-flash is fast and free-tier friendly)
+# Use gemini-2.5-flash based on available models
 GEMINI_MODEL = "gemini-2.5-flash"
 
-# Configure the Gemini client once at module load
-genai.configure(api_key=GEMINI_API_KEY)
+# Create client using new google-genai SDK
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 def build_prompt(schema: str, user_query: str) -> str:
     """
-    Constructs the prompt that will be sent to Gemini.
+    Constructs the prompt sent to Gemini.
 
-    The prompt includes:
-    - The full database schema (from RAG)
-    - The user's natural language question
+    Includes:
+    - Full database schema (from RAG)
+    - User's natural language question
     - Clear instructions to return ONLY the SQL query
 
     Args:
@@ -59,8 +59,7 @@ SQL Query:"""
 
 def generate_sql(schema: str, user_query: str) -> str:
     """
-    Calls the Gemini API with the constructed prompt and
-    returns a clean SQL query string.
+    Calls the Gemini API and returns a clean SQL query string.
 
     Args:
         schema (str): The database schema context (from RAG).
@@ -76,8 +75,10 @@ def generate_sql(schema: str, user_query: str) -> str:
     print(f"[LLM] Sending prompt to Gemini model: {GEMINI_MODEL}")
 
     try:
-        model = genai.GenerativeModel(GEMINI_MODEL)
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt
+        )
         raw_output = response.text
         print(f"[LLM] Raw Gemini response:\n{raw_output}")
 
@@ -95,11 +96,11 @@ def clean_sql_output(raw_text: str) -> str:
     """
     Cleans the raw LLM output to extract only the SQL query.
 
-    Handles common LLM response formats:
+    Handles:
     - ```sql ... ``` markdown blocks
     - ``` ... ``` generic code blocks
     - Leading/trailing whitespace
-    - Extra explanation text
+    - Extra explanation text before the SQL
 
     Args:
         raw_text (str): The raw text returned by the LLM.
@@ -107,22 +108,18 @@ def clean_sql_output(raw_text: str) -> str:
     Returns:
         str: The extracted and cleaned SQL query string.
     """
-    # Remove markdown code fences (```sql ... ``` or ``` ... ```)
+    # Remove markdown code fences
     cleaned = re.sub(r"```(?:sql)?\s*", "", raw_text, flags=re.IGNORECASE)
     cleaned = cleaned.replace("```", "")
-
-    # Strip leading/trailing whitespace and newlines
     cleaned = cleaned.strip()
 
-    # If multiple lines, take lines that look like SQL
-    # (starts with SELECT, WITH, INSERT, UPDATE, DELETE, etc.)
+    # Capture lines starting from the first SQL keyword
     lines = cleaned.splitlines()
     sql_lines = []
     in_sql = False
 
     for line in lines:
         stripped = line.strip()
-        # Start capturing at the first SQL keyword
         if not in_sql and re.match(
             r"^(SELECT|WITH|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|PRAGMA)",
             stripped,
