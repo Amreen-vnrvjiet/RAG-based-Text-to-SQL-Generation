@@ -6,12 +6,13 @@ language query into a valid SQL query based on the provided schema.
 """
 
 import re
+import os
 from google import genai
 
 # -------------------------------------------------------
 # CONFIGURATION — Your Gemini API key
 # -------------------------------------------------------
-GEMINI_API_KEY = "AIzaSyCsEc9Ad8dMmCSVN129UfE9GNT6ysk1A90"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Use gemini-2.5-flash based on available models
 GEMINI_MODEL = "gemini-2.5-flash"
